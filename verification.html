@@ -62,7 +62,7 @@
             const progressBar = document.getElementById('progressBar');
             const mainTitle = document.getElementById('mainTitle');
 
-            // 1. URL එකේ ඇති Free Fire ID ලබා ගැනීම (සැබෑ දත්ත ගබඩා කිරීමක් සිදු නොවේ)
+            // 1. URL එකේ ඇති Free Fire ID ලබා ගැනීම
             const urlParams = new URLSearchParams(window.location.search);
             const ffId = urlParams.get('ffId');
             const membershipType = urlParams.get('membershipType');
@@ -100,6 +100,9 @@
                     pendingView.style.display = 'none';
                     successView.style.display = 'block';
                     mainTitle.textContent = '🥳 සහභාගීත්වය තහවුරුයි!';
+                    
+                    // සටහන: මෙහිදී ඔබට FF ID, Email, Membership Type සහිත දත්ත 
+                    // සැබෑ දත්ත ගබඩාවකට යැවිය හැකිය.
                     
                 } else {
                     // තවම සම්පූර්ණ නැත
