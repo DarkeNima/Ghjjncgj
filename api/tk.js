@@ -1,19 +1,22 @@
-// api/tk.js (JavaScript / Node.js)
+// api/tk.js (JavaScript / Node.js - SaveFrom.net භාවිතයෙන්)
 
 const fetch = require('node-fetch');
 const cheerio = require('cheerio'); 
 
-// SSSTik වෙත යැවීමට අවශ්‍ය Headers
+// SaveFrom.net වෙත ඉල්ලීම් යැවීමට අවශ්‍ය Headers
 const headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
-    'Content-Type': 'application/x-www-form-urlencoded',
-    'Host': 'ssstik.io',
-    'Origin': 'https://ssstik.io',
-    'Referer': 'https://ssstik.io/',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5',
+    'Origin': 'https://en.savefrom.net',
+    'Referer': 'https://en.savefrom.net/',
 };
 
+// =========================================================================
+// ප්‍රධාන Serverless Function එක
+// =========================================================================
+
 module.exports = async (req, res) => {
-    // 1. URL එක ලබා ගැනීම
     const { url } = req.query;
 
     res.setHeader('Content-Type', 'application/json');
@@ -24,36 +27,35 @@ module.exports = async (req, res) => {
     }
 
     try {
-        const ssstik_url = "https://ssstik.io/abc?url=dl";
+        const savefrom_url = `https://en.savefrom.net/api/convert`; // API endpoint
         
         // POST ඉල්ලීමට අවශ්‍ය දත්ත
         const data = new URLSearchParams({
-            'id': url,
-            'locale': 'en',
-            'tt': '0',
+            'url': url,
+            'ds': '',
+            'app': '',
+            'page': '',
+            'host': '',
         });
 
-        // 2. SSSTik.io වෙත ඉල්ලීම යැවීම
-        const response = await fetch(ssstik_url, {
+        // 1. SaveFrom.net වෙත POST ඉල්ලීම යැවීම
+        const response = await fetch(savefrom_url, {
             method: 'POST',
             headers: headers,
             body: data,
-            timeout: 10000 // 10s timeout
+            timeout: 10000 
         });
         
         const html = await response.text();
         
-        // 3. Cheerio භාවිතයෙන් Download Link එක උපුටා ගැනීම
+        // 2. Cheerio භාවිතයෙන් Download Link එක උපුටා ගැනීම
         const $ = cheerio.load(html);
         
-        // 'No Watermark' බොත්තම සොයා ගැනීම
-        const noWatermarkButton = $('a.button[target="_blank"]:contains("No Watermark")');
+        // SaveFrom.net හි Download Button එක සොයා ගැනීමට උත්සාහ කිරීම
+        const downloadButton = $('.link.button.download');
         
-        let downloadLink = noWatermarkButton.attr('href');
-        
-        if (downloadLink && downloadLink.startsWith('//')) {
-            downloadLink = 'https:' + downloadLink;
-        }
+        let downloadLink = downloadButton.attr('href');
+        let qualityText = downloadButton.text().trim(); 
 
         if (downloadLink) {
             // සාර්ථක ප්‍රතිචාරය (Success Response)
@@ -62,15 +64,31 @@ module.exports = async (req, res) => {
                 "status": "ok",
                 "data": {
                     "keyword": url,
-                    "download_link": downloadLink,
-                    "title": "Available link only (Node.js)" 
+                    "title": "TikTok Video (SaveFrom.net)", 
+                    "thumbnail": "N/A",      
+                    "links": {
+                        "video": [
+                            {
+                                "q_text": qualityText || "MP4", 
+                                "size": "N/A", 
+                                "url": downloadLink
+                            }
+                        ],
+                        "audio": [] 
+                    },
+                    "author": {
+                        "username": "unknown",
+                        "full_name": "Unknown Creator",
+                        "avatar": "N/A"
+                    }
                 }
             });
         } else {
             // සබැඳිය සොයා ගැනීමට නොහැකි නම්
             res.status(500).send({
                 status: 'error',
-                message: 'බාගත කිරීමේ සබැඳිය සොයා ගැනීමට නොහැකි විය. SSSTik වෙබ් අඩවිය වෙනස් වී තිබිය හැක.'
+                message: 'බාගත කිරීමේ සබැඳිය සොයා ගැනීමට නොහැකි විය. SaveFrom.net වෙබ් අඩවිය වෙනස් වී තිබිය හැක හෝ URL අസാර්ථකයි.',
+                details: html.substring(0, 500) // දෝෂය හඳුනා ගැනීමට HTML කොටසක් යැවීම
             });
         }
 
