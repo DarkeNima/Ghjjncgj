@@ -1,88 +1,102 @@
-// api/tk.js (JavaScript / Node.js - SaveTT.cc භාවිතයෙන්)
-
+// api/tk.js
 const fetch = require('node-fetch');
-const cheerio = require('cheerio'); 
-
-// Headers (User-Agent එක ස්ථාවරව තබා ගන්න)
-const headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
-    'Accept': '*/*',
-    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-    'Origin': 'https://savett.cc',
-    'Referer': 'https://savett.cc/',
-};
 
 module.exports = async (req, res) => {
     const { url } = req.query;
+
+    // Headers set කිරීම
     res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Access-Control-Allow-Origin', '*'); 
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 's-maxage=10, stale-while-revalidate');
 
     if (!url) {
-        return res.status(400).send({ status: 'error', message: 'TikTok URL එකක් \'url\' parameter එකෙන් ලබා දෙන්න.' });
+        return res.status(400).json({
+            status: "error",
+            message: "TikTok URL එකක් ලබා දී නොමැත."
+        });
     }
 
     try {
-        const savett_url = 'https://savett.cc/action/';
+        // TikWM API වෙත Request එක යැවීම
+        const apiUrl = 'https://www.tikwm.com/api/';
         
-        // POST Data (ඔවුන්ගේ form එකට අනුව)
-        const data = new URLSearchParams({
-            'k': url, // TikTok URL එක
-            'v': ''   // වෙනත් අවශ්‍ය අගයක්
-        });
-
-        // 1. SaveTT.cc වෙත POST ඉල්ලීම යැවීම
-        const response = await fetch(savett_url, {
+        const response = await fetch(apiUrl, {
             method: 'POST',
-            headers: headers,
-            body: data,
-            timeout: 10000 
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
+            },
+            body: new URLSearchParams({
+                'url': url,
+                'count': 12,
+                'cursor': 0,
+                'web': 1,
+                'hd': 1
+            })
         });
-        
-        const html = await response.text();
-        
-        // 2. Cheerio භාවිතයෙන් Download Link එක උපුටා ගැනීම
-        const $ = cheerio.load(html);
-        
-        // SaveTT.cc හි Download Button එක සොයා ගැනීමට උත්සාහ කිරීම
-        // මෙය SaveTT.cc වෙබ් අඩවියේ ඇති download සබැඳිය අඩංගු විය හැකි class එකකි.
-        const downloadButton = $('.download-item a'); 
-        
-        let downloadLink = downloadButton.attr('href');
-        let qualityText = downloadButton.text().trim(); 
 
-        if (downloadLink && downloadLink.includes('https')) { // සැබෑ සබැඳියක්දැයි පරීක්ෂා කිරීම
-            
-            // සාර්ථක ප්‍රතිචාරය (Success Response)
-            res.status(200).send({
+        const data = await response.json();
+
+        // TikWM වෙතින් දත්ත ලැබුනු විට
+        if (data && data.data) {
+            const videoData = data.data;
+
+            // ඔබ ඉල්ලූ JSON Format එකට දත්ත සැකසීම
+            const finalResponse = {
                 "developer": "@prm2.0",
                 "status": "ok",
+                "mess": "Success",
+                "p": "convert",
                 "data": {
+                    "page": "detail",
+                    "extractor": "tiktok",
+                    "status": "ok",
                     "keyword": url,
-                    "title": "TikTok Video (SaveTT.cc)", 
+                    "title": videoData.title || "No Title",
+                    "thumbnail": videoData.cover || videoData.origin_cover,
                     "links": {
                         "video": [
                             {
-                                "q_text": qualityText || "MP4 No Watermark", 
-                                "url": downloadLink
+                                "q_text": "MP4 No Watermark",
+                                "size": (videoData.size / (1024 * 1024)).toFixed(2) + " MB", // Size conversion
+                                "url": videoData.play // Direct link
+                            },
+                            {
+                                "q_text": "MP4 HD",
+                                "size": "HD",
+                                "url": videoData.hdplay || videoData.play
+                            }
+                        ],
+                        "audio": [
+                            {
+                                "q_text": "Audio [MP3]",
+                                "size": "",
+                                "url": videoData.music
                             }
                         ]
+                    },
+                    "author": {
+                        "username": videoData.author.unique_id,
+                        "full_name": videoData.author.nickname,
+                        "avatar": videoData.author.avatar
                     }
                 }
-            });
+            };
+
+            return res.status(200).json(finalResponse);
         } else {
-            // සබැඳිය සොයා ගැනීමට නොහැකි නම්
-            res.status(500).send({
-                status: 'error',
-                message: 'බාගත කිරීමේ සබැඳිය සොයා ගැනීමට නොහැකි විය. SaveTT.cc ව්‍යුහය වෙනස් වී තිබිය හැක.',
+            // TikWM දත්ත ලබා නොදුන් විට
+            return res.status(500).json({
+                status: "error",
+                message: "වීඩියෝ විස්තර ලබා ගැනීමට නොහැකි විය. URL එක නිවැරදි දැයි බලන්න."
             });
         }
 
     } catch (error) {
-        console.error("API Error:", error);
-        res.status(500).send({
-            status: 'error',
-            message: 'අභ්‍යන්තර සේවාදායක දෝෂයක් සිදුවිය.',
-            details: error.message
+        return res.status(500).json({
+            status: "error",
+            message: "Internal Server Error",
+            error: error.message
         });
     }
 };
