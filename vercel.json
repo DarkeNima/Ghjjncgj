@@ -2,17 +2,14 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/tk.py",
-      "use": "@vercel/python",
-      "config": {
-        "runtime": "python3.11" 
-      }
+      "src": "api/tk.js",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/api/tk",
-      "dest": "api/tk.py"
+      "dest": "api/tk.js"
     }
   ]
 }
