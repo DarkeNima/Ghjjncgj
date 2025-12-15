@@ -43,7 +43,7 @@ module.exports = async (req, res) => {
 
             // ඔබ ඉල්ලූ JSON Format එකට දත්ත සැකසීම
             const finalResponse = {
-                "developer": "@prm2.0",
+                "developer": "@DarkNaviya",
                 "status": "ok",
                 "mess": "Success",
                 "p": "convert",
