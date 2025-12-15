@@ -1,0 +1,11 @@
+
+// package.json (මෙය root ෆෝල්ඩරයේ තිබිය යුතුය)
+{
+  "name": "vercel-tiktok-api",
+  "version": "1.0.0",
+  "description": "TikTok Downloader API",
+  "dependencies": {
+    "node-fetch": "^2.6.1",
+    "cheerio": "^1.0.0-rc.10" 
+  }
+}
